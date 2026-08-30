@@ -201,6 +201,9 @@
       <span><span class="dot" style="background:var(--major)"></span>专业课</span>
     </div>
     <button class="btn-reset" id="resetBtn">恢复默认</button>
+    <button class="btn-reset" id="exportBtn">📤 导出</button>
+    <button class="btn-reset" id="importBtn">📥 导入</button>
+    <input type="file" id="importFile" accept=".json,text/plain" style="display:none">
   </div>
 
   <div class="phase-bar" id="phaseBar"></div>
@@ -366,6 +369,39 @@ function load(){
   const p = generateDefaultPlan(); save(p); return p;
 }
 function save(d){ localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
+
+// ============ 导出 / 导入 ============
+function exportData(){
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const name = '考研计划_' + d.getFullYear() + (d.getMonth()+1) + d.getDate() + '.json';
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function importData(){
+  document.getElementById('importFile').click();
+}
+function handleImportFile(file){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      const obj = JSON.parse(e.target.result);
+      if(!obj || typeof obj !== 'object') throw 0;
+      const count = Object.keys(obj).length;
+      if(!count) { alert('文件里没有数据'); return; }
+      if(confirm(`导入 ${count} 天的任务数据，会覆盖当前数据。确定吗？`)){
+        data = obj; save(data); render();
+        alert('导入成功！');
+      }
+    } catch(err){
+      alert('导入失败：文件格式不对，请选择之前导出的 .json 文件');
+    }
+  };
+  reader.readAsText(file);
+}
 
 // ============ 渲染 ============
 let viewYear, viewMonth;
@@ -718,6 +754,12 @@ document.getElementById('todayBtn').addEventListener('click', ()=>{ openEditor(t
 document.getElementById('scoreBtn').addEventListener('click', showScore);
 document.getElementById('resetBtn').addEventListener('click', ()=>{
   if(confirm('确定恢复默认计划？你的所有修改都会被覆盖。')){ data = generateDefaultPlan(); save(data); render(); }
+});
+document.getElementById('exportBtn').addEventListener('click', exportData);
+document.getElementById('importBtn').addEventListener('click', importData);
+document.getElementById('importFile').addEventListener('change', e=>{
+  if(e.target.files && e.target.files[0]) handleImportFile(e.target.files[0]);
+  e.target.value = '';
 });
 
 // ============ 启动 ============
