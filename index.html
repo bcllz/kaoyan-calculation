@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>考研上岸概率计算器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(160deg,#f6f8fb,#eef1f6);
+    min-height: 100vh; padding: 32px 16px; color: #2b2b2b; line-height: 1.5;
+  }
+  .card {
+    max-width: 620px; margin: 0 auto; background: #fff; border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.08); overflow: hidden;
+  }
+  .head {
+    padding: 26px 28px 18px; text-align: center; background: linear-gradient(135deg,#f59e0b,#e05d5d);
+    color: #fff;
+  }
+  .head h1 { font-size: 22px; font-weight: 700; }
+  .head p { font-size: 13px; opacity: .92; margin-top: 6px; }
+  .body { padding: 24px 28px 28px; }
+  .field { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .field label {
+    width: 130px; flex-shrink: 0; font-size: 14px; color: #555; text-align: right;
+  }
+  .field select, .field input {
+    flex: 1; padding: 10px 12px; border: 1px solid #d9dbe0; border-radius: 10px;
+    font-size: 14px; background: #fafbfc;
+  }
+  .field select:focus { outline: none; border-color: #3b82f6; background: #fff; }
+  .btn {
+    width: 100%; padding: 13px; margin-top: 6px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg,#f59e0b,#e05d5d); color: #fff; font-size: 16px;
+    font-weight: 700; cursor: pointer;
+  }
+  .btn:hover { opacity: .92; }
+
+  .result { margin-top: 22px; display: none; }
+  .big {
+    font-size: 56px; font-weight: 800; text-align: center; line-height: 1; margin-top: 4px;
+  }
+  .big-label { text-align: center; color: #888; font-size: 13px; margin: 6px 0 14px; }
+  .bar { height: 10px; border-radius: 6px; background: #eee; overflow: hidden; margin: 0 auto 18px; width: 84%; }
+  .bar .fill { height: 100%; border-radius: 6px; transition: width .5s ease; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; font-size: 14px; }
+  .grid .m { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f2f3f5; }
+  .grid .m b { color: #2b2b2b; }
+  .verdict {
+    margin-top: 16px; padding: 13px 15px; border-radius: 10px; font-size: 14px;
+    background: #fafbfc; border-left: 4px solid #e8a13a; line-height: 1.6;
+  }
+  .disclaimer { font-size: 11px; color: #aaa; text-align: center; margin-top: 16px; line-height: 1.6; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="head">
+    <h1>🎯 考研上岸概率计算器</h1>
+    <p>根据你的真实水平估算，仅供参考 · 适用于大部分专业</p>
+  </div>
+  <div class="body">
+    <div class="field">
+      <label>报考地区</label>
+      <select id="f_region">
+        <option value="a">A区（国家线高）</option>
+        <option value="b">B区（国家线低，-10分）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>目标院校层次</label>
+      <select id="f_comp">
+        <option value="0">冷门专业 / 双非过线即可</option>
+        <option value="1">普通一本</option>
+        <option value="2" selected>211 / 普通重点</option>
+        <option value="3">985</option>
+        <option value="4">顶尖985热门专业</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>是否考数学</label>
+      <select id="f_hasmath">
+        <option value="1" selected>考数学</option>
+        <option value="0">不考数学（两门专业课）</option>
+      </select>
+    </div>
+    <div id="mathBlock">
+      <div class="field">
+        <label>数学类别</label>
+        <select id="f_mathType">
+          <option value="1" selected>数学一</option>
+          <option value="2">数学二</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>高等数学</label>
+        <select id="f_gaoshu">
+          <option value="0">没学</option>
+          <option value="1" selected>学过但不熟 / 会算不会想</option>
+          <option value="2">基础一般，能独立做题</option>
+          <option value="3">基础扎实，思路清晰</option>
+          <option value="4">很强</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>线性代数</label>
+        <select id="f_xiandai">
+          <option value="0">没学</option>
+          <option value="1" selected>学过但不熟</option>
+          <option value="2">基础一般</option>
+          <option value="3">基础扎实</option>
+          <option value="4">很强</option>
+        </select>
+      </div>
+      <div class="field" id="gailvField">
+        <label>概率论与统计</label>
+        <select id="f_gailv">
+          <option value="0">没学</option>
+          <option value="1" selected>学过但不熟</option>
+          <option value="2">基础一般</option>
+          <option value="3">基础扎实</option>
+          <option value="4">很强</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>词汇量</label>
+      <select id="f_vocab">
+        <option value="0">3000 以下</option>
+        <option value="1">3000 ~ 4500</option>
+        <option value="2" selected>4500 ~ 6000（约六级）</option>
+        <option value="3">6000 ~ 8000</option>
+        <option value="4">8000 以上</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>阅读正确率</label>
+      <select id="f_readacc">
+        <option value="0">50% 以下</option>
+        <option value="1">50% ~ 65%</option>
+        <option value="2" selected>65% ~ 80%</option>
+        <option value="3">80% 以上</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>政治水平</label>
+      <select id="f_politics">
+        <option value="0" selected>完全没开始</option>
+        <option value="1">过了一遍教材</option>
+        <option value="2">刷过1000题</option>
+        <option value="3">背过肖四肖八+时政</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>专业课水平</label>
+      <select id="f_major">
+        <option value="0" selected>还没开始</option>
+        <option value="1">学过但不熟</option>
+        <option value="2">基础一般</option>
+        <option value="3">基础扎实</option>
+        <option value="4">很强</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>每天有效时长</label>
+      <select id="f_hours">
+        <option value="0">2小时以下</option>
+        <option value="1">2~4小时</option>
+        <option value="2" selected>4~6小时</option>
+        <option value="3">6~8小时</option>
+        <option value="4">8小时以上</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>考试时间</label>
+      <select id="f_year">
+        <option value="2026" selected>2026年12月（今年）</option>
+        <option value="2027">2027年12月（明年）</option>
+      </select>
+    </div>
+
+    <button class="btn" id="calcBtn">🔢 计算上岸概率</button>
+
+    <div class="result" id="result">
+      <div class="big" id="bigNum">--%</div>
+      <div class="big-label">预计上岸概率</div>
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="grid" id="grid"></div>
+      <div class="verdict" id="verdict"></div>
+      <div class="disclaimer">
+        本概率由经验模型估算，仅用于自我评估与决策参考，<br>不构成真实录取预测。真实录取还受当年题目难度、分数线波动、临场发挥、复试等因素影响。
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ 各科水平 → 估算分 ============
+// 数学子模块熟练度（0~1）
+const SUBJ_LEVEL = [0.15, 0.5, 0.7, 0.85, 0.95];
+// 数学子模块分值（满分150）
+const MATH_PARTS = {
+  // 数一：高数84 + 线代33 + 概率33
+  '1': { gaoshu:84, xiandai:33, gailv:33 },
+  // 数二：高数117 + 线代33（不考概率）
+  '2': { gaoshu:117, xiandai:33, gailv:0 },
+};
+// 英语：词汇量 + 阅读正确率 → 满分100
+const VOCAB_SCORE = [45, 60, 74, 84, 92];        // 词汇量对应分（满分100）
+const READACC_SCORE = [50, 64, 76, 88];          // 阅读正确率对应分（满分100）
+
+const POLITICS_SCORE = [56, 64, 71, 78];          // 满分100
+const MAJOR_SCORE = [45, 85, 105, 122, 138];      // 满分150
+
+// 院校层次 → 需要的总分（A区基准）
+const COMP_SCORE = [280, 305, 330, 355, 380];
+// 每天时长 → 努力系数
+const HOURS_FACTOR = [0.25, 0.45, 0.65, 0.8, 1.0];
+
+const EXAM_YEARS = {
+  '2026': '2026-12-19',
+  '2027': '2027-12-19',
+};
+
+function calc(){
+  const hasMath = document.getElementById('f_hasmath').value === '1';
+  const region = document.getElementById('f_region').value;
+  const mathType = document.getElementById('f_mathType').value;
+  const gaoshu = +document.getElementById('f_gaoshu').value;
+  const xiandai = +document.getElementById('f_xiandai').value;
+  const gailv = +document.getElementById('f_gailv').value;
+  const vocab = +document.getElementById('f_vocab').value;
+  const readacc = +document.getElementById('f_readacc').value;
+  const politics = +document.getElementById('f_politics').value;
+  const major = +document.getElementById('f_major').value;
+  const comp = +document.getElementById('f_comp').value;
+  const hours = +document.getElementById('f_hours').value;
+  const year = document.getElementById('f_year').value;
+
+  // 1) 数学估分（按子模块加权）
+  let mathScore = 0;
+  if(hasMath){
+    const parts = MATH_PARTS[mathType];
+    mathScore = parts.gaoshu * SUBJ_LEVEL[gaoshu]
+              + parts.xiandai * SUBJ_LEVEL[xiandai]
+              + parts.gailv * SUBJ_LEVEL[gailv];
+  }
+
+  // 2) 英语估分：词汇量 40% + 阅读正确率 60%
+  const englishScore = VOCAB_SCORE[vocab] * 0.4 + READACC_SCORE[readacc] * 0.6;
+
+  // 3) 估算总分
+  let estTotal;
+  if(hasMath){
+    estTotal = mathScore + englishScore + POLITICS_SCORE[politics] + MAJOR_SCORE[major];
+  } else {
+    estTotal = englishScore + POLITICS_SCORE[politics] + MAJOR_SCORE[major] * 2; // 两门专业课
+  }
+  estTotal = Math.round(estTotal);
+
+  // 4) 目标总分（地区修正）
+  let target = COMP_SCORE[comp];
+  if(region === 'b') target -= 10;
+
+  // 5) 基础概率：估算分 vs 目标分，sigmoid
+  let p = 1 / (1 + Math.exp(-(estTotal - target) / 16));
+
+  // 6) 努力修正：每天时长 × 剩余时间
+  const examDay = EXAM_YEARS[year] || '2026-12-19';
+  const daysLeft = Math.max(0, Math.round((new Date(examDay) - new Date())/86400000));
+  const timeFactor = Math.min(1, daysLeft / 150);
+  const catchup = HOURS_FACTOR[hours] * timeFactor;
+  const adjust = (catchup - 0.4) * 0.22; // 约 -0.09 ~ +0.13
+  p = Math.max(0, Math.min(1, p + adjust));
+
+  const prob = Math.round(p * 100);
+
+  // 显示
+  const color = prob >= 70 ? '#4caf6e' : prob >= 40 ? '#e8a13a' : '#e05d5d';
+  document.getElementById('bigNum').textContent = prob + '%';
+  document.getElementById('bigNum').style.color = color;
+  document.getElementById('fill').style.width = prob + '%';
+  document.getElementById('fill').style.background = color;
+
+  let verdict;
+  if(prob >= 70) verdict = '✅ 概率较高。保持节奏，主攻短板科目即可，注意别在优势科目上反复刷而忽略弱项。';
+  else if(prob >= 50) verdict = '🟡 有机会。当前基础和/或投入还差一点，建议优先补最弱的那一科，它的提升空间最大。';
+  else if(prob >= 30) verdict = '🟠 偏低。要么提高每天有效学习时长，要么重新评估目标院校层次，二者选其一会有明显改善。';
+  else if(prob >= 15) verdict = '🔴 难度较大。建议认真考虑：换目标院校、把战线拉长到明年、或大幅提升每日有效学习时长。';
+  else verdict = '⚠️ 非常危险。当前基础与目标差距过大，强烈建议重新规划目标或时间。';
+
+  let grid = `
+    <div class="m"><span>估算总分</span><b>${estTotal} / 500</b></div>
+    <div class="m"><span>目标总分</span><b>约 ${target}</b></div>
+    <div class="m"><span>分差</span><b>${estTotal>=target?'+':''}${estTotal-target}</b></div>
+    <div class="m"><span>距离考试</span><b>${daysLeft} 天</b></div>`;
+  if(hasMath){
+    grid += `
+    <div class="m"><span>数学估分</span><b>${Math.round(mathScore)} / 150</b></div>
+    <div class="m"><span>英语估分</span><b>${Math.round(englishScore)} / 100</b></div>`;
+  } else {
+    grid += `
+    <div class="m"><span>英语估分</span><b>${Math.round(englishScore)} / 100</b></div>`;
+  }
+  document.getElementById('grid').innerHTML = grid;
+  document.getElementById('verdict').textContent = verdict;
+  document.getElementById('result').style.display = 'block';
+}
+
+document.getElementById('calcBtn').addEventListener('click', calc);
+// 不考数学时隐藏数学选项
+function toggleMath(){
+  const noMath = document.getElementById('f_hasmath').value === '0';
+  document.getElementById('mathBlock').classList.toggle('hidden', noMath);
+  toggleGailv();
+}
+// 数二隐藏概率论
+function toggleGailv(){
+  const show = document.getElementById('f_mathType').value === '1';
+  document.getElementById('gailvField').classList.toggle('hidden', !show);
+}
+document.getElementById('f_hasmath').addEventListener('change', toggleMath);
+document.getElementById('f_mathType').addEventListener('change', toggleGailv);
+</script>
+</body>
+</html>
