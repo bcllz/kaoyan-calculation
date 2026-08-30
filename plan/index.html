@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>考研计划表</title>
+<style>
+  :root {
+    --math: #e05d5d;
+    --english: #4a90d9;
+    --politics: #e8a13a;
+    --major: #4caf6e;
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --text: #2b2b2b;
+    --muted: #8a8f98;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1220px; margin: 0 auto; }
+
+  .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+  .toolbar h1 { font-size: 22px; margin-right: auto; }
+  .month-nav { display: flex; align-items: center; gap: 10px; }
+  .month-nav button {
+    border: 1px solid #d9dbe0; background: #fff; border-radius: 8px;
+    padding: 6px 14px; cursor: pointer; font-size: 16px; color: var(--text);
+  }
+  .month-nav button:hover { background: #f0f1f4; }
+  .month-title { font-size: 17px; font-weight: 600; min-width: 110px; text-align: center; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .btn-reset {
+    border: 1px solid #d9dbe0; background: #fff; border-radius: 8px;
+    padding: 6px 14px; cursor: pointer; font-size: 13px; color: var(--muted);
+  }
+  .btn-reset:hover { background: #fdf0f0; color: #d9534f; border-color: #d9534f; }
+  .btn-today {
+    border: none; background: #3b82f6; color: #fff; border-radius: 8px;
+    padding: 8px 16px; cursor: pointer; font-size: 14px; font-weight: 600;
+  }
+  .btn-today:hover { background: #2563eb; }
+  .btn-score {
+    border: none; background: linear-gradient(135deg,#f59e0b,#e05d5d); color: #fff;
+    border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 14px; font-weight: 600;
+  }
+  .btn-score:hover { opacity: .9; }
+
+  .phase-bar {
+    background: #fff; border: 1px solid #e4e6ea; border-radius: 10px;
+    padding: 10px 16px; margin-bottom: 16px; font-size: 13px; color: var(--muted);
+  }
+  .phase-bar b { color: var(--text); }
+
+  .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .weekday { text-align: center; font-weight: 600; font-size: 13px; color: var(--muted); padding: 6px 0; }
+  .day {
+    background: var(--card); border: 1px solid #e4e6ea; border-radius: 8px;
+    min-height: 100px; padding: 6px 7px; cursor: pointer; position: relative;
+    transition: box-shadow .12s, transform .06s; display: flex; flex-direction: column; gap: 3px; overflow: hidden;
+  }
+  .day:hover { box-shadow: 0 2px 10px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .day.empty { background: transparent; border-color: transparent; cursor: default; }
+  .day.other-month { opacity: .35; }
+  .day.today { border-color: #3b82f6; box-shadow: 0 0 0 2px #3b82f640; }
+  .day.exam { background: #fff5f5; border-color: #e05d5d; }
+
+  .day-head { display: flex; align-items: center; justify-content: space-between; }
+  .day-num { font-size: 14px; font-weight: 600; }
+  .day.today .day-num { color: #3b82f6; }
+  .day.exam .day-num { color: #e05d5d; }
+  .day-count { font-size: 11px; color: var(--muted); }
+
+  .task-chip {
+    font-size: 11px; padding: 2px 5px; border-radius: 4px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; color: #fff;
+  }
+  .task-chip.math { background: var(--math); }
+  .task-chip.english { background: var(--english); }
+  .task-chip.politics { background: var(--politics); }
+  .task-chip.major { background: var(--major); }
+  .task-chip.done { opacity: .45; text-decoration: line-through; }
+  .more { font-size: 11px; color: var(--muted); }
+
+  /* 模态框 */
+  .mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .mask.show { display: flex; }
+  .dialog {
+    background: #fff; border-radius: 14px; width: 620px; max-width: 94vw;
+    max-height: 86vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .dialog-head { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
+  .dialog-head h2 { font-size: 18px; }
+  .dialog-head .sub { font-size: 12px; color: var(--muted); font-weight: normal; margin-left: 8px; }
+  .close { border: none; background: none; font-size: 24px; cursor: pointer; color: var(--muted); line-height: 1; }
+  .dialog-body { padding: 16px 20px; overflow-y: auto; }
+
+  /* 分组列表 */
+  .group { margin-bottom: 14px; }
+  .group-head {
+    display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px;
+    padding: 6px 0 4px; border-bottom: 1px solid #f2f3f5;
+  }
+  .group-head .g-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .group-head .g-time { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: normal; }
+  .task-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f7f8fa; }
+  .task-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; accent-color: #3b82f6; }
+  .task-row .t-text { flex: 1; font-size: 14px; }
+  .task-row .t-time { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .task-row .t-del { border: none; background: none; color: #ccc; cursor: pointer; font-size: 16px; flex-shrink: 0; }
+  .task-row .t-del:hover { color: #e05d5d; }
+  .task-row .t-move { border: 1px solid #d9dbe0; background: #fff; color: var(--muted); cursor: pointer; font-size: 12px; border-radius: 5px; padding: 1px 6px; flex-shrink: 0; }
+  .task-row .t-move:hover { background: #eef4ff; color: #3b82f6; border-color: #3b82f6; }
+  .core-mark { font-size: 12px; }
+
+  /* 信心指数结果 */
+  .score-big { font-size: 48px; font-weight: 700; text-align: center; line-height: 1; margin: 6px 0 2px; }
+  .score-label { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .score-bar { height: 10px; border-radius: 6px; background: #eee; overflow: hidden; margin: 0 auto 16px; width: 80%; }
+  .score-bar .fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg,#4caf6e,#e8a13a,#e05d5d); }
+  .score-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 13px; margin-bottom: 14px; }
+  .score-meta .m { display: flex; justify-content: space-between; border-bottom: 1px solid #f2f3f5; padding: 4px 0; }
+  .score-meta .m b { color: var(--text); }
+  .score-note { font-size: 12px; color: var(--muted); background: #fafbfc; border-radius: 8px; padding: 10px 12px; line-height: 1.6; }
+  .calc-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+  .calc-field { display: flex; align-items: center; gap: 10px; }
+  .calc-field label { width: 110px; flex-shrink: 0; font-size: 13px; color: var(--muted); text-align: right; }
+  .calc-field select { flex: 1; padding: 8px 10px; border: 1px solid #d9dbe0; border-radius: 8px; font-size: 14px; background: #fff; }
+  .calc-recalc { width: 100%; padding: 10px; background: linear-gradient(135deg,#f59e0b,#e05d5d); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; }
+  .calc-recalc:hover { opacity: .92; }
+  .calc-disclaimer { font-size: 11px; color: #aaa; margin-top: 10px; text-align: center; }
+  .task-row.done .t-text { color: var(--muted); text-decoration: line-through; }
+
+  .empty-tip { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+  .add-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; border-top: 1px solid #eee; padding-top: 14px; }
+  .add-row select, .add-row input { padding: 8px 10px; border: 1px solid #d9dbe0; border-radius: 8px; font-size: 14px; }
+  .add-row select { flex-shrink: 0; }
+  .add-row .in-text { flex: 1; min-width: 180px; }
+  .add-row .in-time { width: 70px; }
+  .add-row button { padding: 8px 16px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .add-row button:hover { background: #2563eb; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 12px; }
+
+  /* ===== 手机端适配 ===== */
+  @media (max-width: 640px) {
+    body { padding: 10px; font-size: 14px; }
+    .toolbar { gap: 10px; margin-bottom: 10px; }
+    .toolbar h1 { font-size: 17px; width: 100%; margin-right: 0; }
+    .btn-today { padding: 9px 14px; font-size: 14px; }
+    .btn-score { padding: 9px 14px; font-size: 14px; }
+    .legend { gap: 8px; }
+    .legend span { font-size: 11px; }
+    .month-title { font-size: 15px; min-width: 90px; }
+    .calendar { gap: 3px; }
+    .weekday { font-size: 11px; padding: 3px 0; }
+    .day { min-height: 54px; padding: 3px 4px; gap: 2px; border-radius: 6px; }
+    .day-num { font-size: 12px; }
+    .day-count { font-size: 9px; }
+    .task-chip {
+      width: 10px; height: 10px; padding: 0; border-radius: 3px; overflow: hidden;
+      text-indent: -9999px; display: inline-block; flex-shrink: 0;
+    }
+    .more { display: none; }
+    .dialog { width: 96vw; max-height: 88vh; border-radius: 12px; }
+    .dialog-body { padding: 12px 14px; }
+    .dialog-head { padding: 12px 14px; }
+    .dialog-head h2 { font-size: 16px; }
+    .task-row .t-text { font-size: 13px; }
+    .score-big { font-size: 40px; }
+    .calc-field { flex-direction: column; align-items: stretch; gap: 4px; }
+    .calc-field label { width: auto; text-align: left; font-size: 12px; }
+    .score-meta { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toolbar">
+    <h1>📅 考研计划表</h1>
+    <button class="btn-today" id="todayBtn">📋 今日任务</button>
+    <button class="btn-score" id="scoreBtn">🎯 上岸概率计算器</button>
+    <div class="month-nav">
+      <button id="prevMonth">◀</button>
+      <span class="month-title" id="monthTitle"></span>
+      <button id="nextMonth">▶</button>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--math)"></span>数学</span>
+      <span><span class="dot" style="background:var(--english)"></span>英语</span>
+      <span><span class="dot" style="background:var(--politics)"></span>政治</span>
+      <span><span class="dot" style="background:var(--major)"></span>专业课</span>
+    </div>
+    <button class="btn-reset" id="resetBtn">恢复默认</button>
+  </div>
+
+  <div class="phase-bar" id="phaseBar"></div>
+  <div class="calendar" id="calendar"></div>
+</div>
+
+<div class="mask" id="mask">
+  <div class="dialog">
+    <div class="dialog-head">
+      <h2 id="dialogTitle">任务列表</h2>
+      <button class="close" id="closeBtn">×</button>
+    </div>
+    <div class="dialog-body">
+      <div id="taskList"></div>
+      <div class="add-row">
+        <select id="addSubject">
+          <option value="math">数学</option>
+          <option value="english">英语</option>
+          <option value="politics">政治</option>
+          <option value="major">专业课</option>
+        </select>
+        <input class="in-text" id="addText" placeholder="任务内容，例如：线代·特征值 1000题B组">
+        <input class="in-time" id="addTime" placeholder="时长" value="1h">
+        <button id="addBtn">＋ 添加</button>
+      </div>
+      <div class="hint">勾选=已完成 · ⭐=核心任务（做不完优先做它，次要任务才用 ↪ 顺延） · 点 × 删除 · 改动自动保存。点日历任意日期查看当天任务。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUBJECTS = {
+  math:     { label: '数学',   color: 'var(--math)' },
+  english:  { label: '英语',   color: 'var(--english)' },
+  politics: { label: '政治',   color: 'var(--politics)' },
+  major:    { label: '专业课', color: 'var(--major)' },
+};
+const SUBJECT_ORDER = ['math','english','major','politics'];
+const STORE_KEY = 'kaoyanPlan_v2';
+const EXAM_DATES = ['2026-12-19', '2026-12-20'];
+
+const PHASES = [
+  { name: '① 基础收尾（紧凑）', start: '2026-08-30', end: '2026-09-27', color: '#4caf6e' },
+  { name: '② 强化',             start: '2026-09-28', end: '2026-10-25', color: '#e8a13a' },
+  { name: '③ 真题分类',         start: '2026-10-26', end: '2026-11-22', color: '#e05d5d' },
+  { name: '④ 冲刺',             start: '2026-11-23', end: '2026-12-18', color: '#3b82f6' },
+];
+
+// 数学二主题序列（数二：不考概率统计/无穷级数/曲线曲面积分/三重积分/傅里叶/空间解析几何；考高数+线代）
+// 对齐张宇30讲章节，起点从用户当前进度「微分中值定理」开始
+const MATH_TOPICS = [
+  '第3讲 微分中值定理','第4讲 不定积分','第5讲 定积分','第6讲 反常积分与定积分应用',
+  '第7讲 微分方程','第8讲 多元函数微分学','第9讲 二重积分',
+  '线代·行列式','线代·矩阵','线代·向量组','线代·线性方程组','线代·特征值与特征向量','线代·二次型'
+];
+// 核心定理证明题清单（数二化：删掉级数/曲线积分/格林高斯/概率统计）
+const PROOF_TOPICS = [
+  '极限四则运算法则','极限脱帽定理','无穷小定阶定理','函数连续性定理','奇偶性与周期性',
+  '零点定理与介值定理','费马引理','罗尔定理','拉格朗日中值定理','柯西中值定理',
+  '泰勒中值定理','积分第一中值定理','变限积分求导定理','牛顿-莱布尼茨公式','洛必达法则',
+  '函数凹凸性判定','定积分奇偶性周期性',
+  '线代·矩阵秩 r(AB)≤min','线代·向量组线性无关','线代·基础解系','线代·相似与合同','线代·正定矩阵'
+];
+// 自控原理章节序列
+const ZIKONG_CHAPTERS = [
+  '控制系统数学模型','时域分析法','根轨迹法','频域分析法',
+  '系统校正','离散系统','非线性系统','状态空间(现控)'
+];
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function toKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function fromKey(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y, m-1, d); }
+function addDays(d, n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function phaseOf(key){ for(const p of PHASES){ if(key>=p.start && key<=p.end) return p; } return null; }
+
+function generateDefaultPlan(){
+  const plan = {};
+  let cur = fromKey('2026-08-30');
+  const last = fromKey('2026-12-18');
+  let topicIdx = 0, zikIdx = 0, proofIdx = 0;
+  while(toKey(cur) <= toKey(last)){
+    const key = toKey(cur);
+    const dow = cur.getDay(); // 0=周日 ... 6=周六
+    const weekend = (dow===0 || dow===6);
+    const ph = phaseOf(key);
+    const isBase = ph.name.indexOf('①')===0;
+    const isStrong = ph.name.indexOf('②')===0;
+    const isZhenti = ph.name.indexOf('③')===0;
+    const isSprint = ph.name.indexOf('④')===0;
+    const tasks = [];
+
+    // ===== 数学二 =====
+    const topic = MATH_TOPICS[topicIdx % MATH_TOPICS.length];
+    const proof = PROOF_TOPICS[proofIdx % PROOF_TOPICS.length];
+    if(!weekend) topicIdx++;
+    proofIdx++;
+    if(isBase){
+      tasks.push({subject:'math', text:`30讲·${topic}：例题+习题 约20道`, time:'2h', done:false});
+      tasks.push({subject:'math', text:'1000题 A组 15道', time:'1.5h', done:false});
+      tasks.push({subject:'math', text:`证明题：${proof}`, time:'0.5h', done:false});
+      if(weekend){
+        tasks.push({subject:'math', text:'题型总结（本周题型归纳）', time:'1.5h', done:false});
+        tasks.push({subject:'math', text:'知识点总结（公式定理默写）', time:'1h', done:false});
+      }
+    } else if(isStrong){
+      tasks.push({subject:'math', text:'1000题 B组 20道', time:'2h', done:false});
+      tasks.push({subject:'math', text:`30讲·${topic} 强化例题`, time:'1.5h', done:false});
+      tasks.push({subject:'math', text:`证明题：${proof}`, time:'0.5h', done:false});
+      if(weekend) tasks.push({subject:'math', text:'题型总结 + 知识点总结', time:'2h', done:false});
+    } else if(isZhenti){
+      tasks.push({subject:'math', text:`真题分类·${topic}`, time:'3h', done:false});
+      tasks.push({subject:'math', text:'1000题错题二刷', time:'1h', done:false});
+      tasks.push({subject:'math', text:`证明题：${proof}`, time:'0.5h', done:false});
+      if(weekend) tasks.push({subject:'math', text:'整套真题（掐时间3h）', time:'3h', done:false});
+    } else { // 冲刺
+      tasks.push({subject:'math', text:'真题错题二刷', time:'2.5h', done:false});
+      tasks.push({subject:'math', text:'知识点总结（公式定理）', time:'1h', done:false});
+      tasks.push({subject:'math', text:`证明题：${proof}`, time:'0.5h', done:false});
+      if(weekend) tasks.push({subject:'math', text:'模拟卷 1套（掐时间）', time:'3h', done:false});
+    }
+
+    // ===== 英语二 =====
+    tasks.push({subject:'english', text:'单词 150个', time:'0.5h', done:false});
+    tasks.push({subject:'english', text:'长难句 每日5句', time:'0.5h', done:false});
+    if(isBase || isStrong){
+      tasks.push({subject:'english', text:'精读1篇（教辅→尽快转英语二真题）', time:'1h', done:false});
+      if(dow===1||dow===3||dow===5) tasks.push({subject:'english', text:'小作文/图表作文素材积累', time:'0.5h', done:false});
+    } else {
+      tasks.push({subject:'english', text:'英语二真题精读1篇', time:'1h', done:false});
+      tasks.push({subject:'english', text: isZhenti?'作文·图表作文模板整理':'作文·真题写作+背诵', time:'0.5h', done:false});
+    }
+
+    // ===== 政治 =====
+    const isNov = key >= '2026-11-01';
+    if(isSprint){
+      tasks.push({subject:'politics', text:'肖四肖八背诵 + 时政', time:'1.5h', done:false});
+    } else if(isNov){
+      tasks.push({subject:'politics', text:'政治选择题 1000题', time:'1h', done:false});
+    } else if(weekend){
+      tasks.push({subject:'politics', text:'政治选择题（预热）', time:'1h', done:false});
+    }
+
+    // ===== 专业课（自控原理，隔天：周一/三/五） =====
+    if(dow===1||dow===3||dow===5){
+      const chap = ZIKONG_CHAPTERS[zikIdx % ZIKONG_CHAPTERS.length];
+      zikIdx++;
+      if(isBase)      tasks.push({subject:'major', text:`821自控·${chap} 教材+课后题`, time:'3h', done:false});
+      else if(isStrong) tasks.push({subject:'major', text:`821自控·${chap} 题型训练`, time:'3h', done:false});
+      else if(isZhenti) tasks.push({subject:'major', text:'821自控·历年真题', time:'3h', done:false});
+      else            tasks.push({subject:'major', text:'821自控·背诵+错题（不能用计算器，练手算）', time:'2h', done:false});
+    }
+
+    plan[key] = tasks;
+    cur = addDays(cur, 1);
+  }
+  return plan;
+}
+
+// ============ 数据读写 ============
+let data = load();
+function load(){
+  try { const raw = localStorage.getItem(STORE_KEY); if(raw) return JSON.parse(raw); } catch(e){}
+  const p = generateDefaultPlan(); save(p); return p;
+}
+function save(d){ localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
+
+// ============ 渲染 ============
+let viewYear, viewMonth;
+function render(){
+  const y = viewYear, m = viewMonth;
+  document.getElementById('monthTitle').textContent = y + '年' + (m+1) + '月';
+  renderPhaseBar();
+  const cal = document.getElementById('calendar');
+  cal.innerHTML = '';
+  ['一','二','三','四','五','六','日'].forEach(w=>{
+    const el = document.createElement('div'); el.className='weekday'; el.textContent=w; cal.appendChild(el);
+  });
+  const first = new Date(y, m, 1);
+  const startOffset = (first.getDay()+6)%7;
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const todayKey = toKey(new Date());
+  for(let i=0;i<startOffset;i++){ const el=document.createElement('div'); el.className='day empty'; cal.appendChild(el); }
+  for(let d=1; d<=daysInMonth; d++){
+    const key = y+'-'+pad(m+1)+'-'+pad(d);
+    const el = document.createElement('div');
+    el.className='day';
+    if(key===todayKey) el.classList.add('today');
+    if(EXAM_DATES.includes(key)) el.classList.add('exam');
+    el.dataset.key=key;
+    el.innerHTML = buildDayHtml(key);
+    el.addEventListener('click', ()=>openEditor(key));
+    cal.appendChild(el);
+  }
+}
+
+function buildDayHtml(key){
+  const tasks = data[key] || [];
+  const doneCount = tasks.filter(t=>t.done).length;
+  const head = `<div class="day-head"><span class="day-num">${key.split('-')[2]}</span>` +
+    (tasks.length?`<span class="day-count">${doneCount}/${tasks.length}</span>`:'') + `</div>`;
+  const chips = tasks.slice(0,4).map(t=>`<div class="task-chip ${t.subject}${t.done?' done':''}" title="${t.text}">${t.text}</div>`).join('');
+  const more = tasks.length>4?`<div class="more">+${tasks.length-4} 更多…</div>`:'';
+  const examTag = EXAM_DATES.includes(key)?`<div class="task-chip math">📝 考试</div>`:'';
+  return head + chips + more + examTag;
+}
+
+function renderPhaseBar(){
+  const midKey = viewYear+'-'+pad(viewMonth+1)+'-15';
+  const ph = phaseOf(midKey);
+  const bar = document.getElementById('phaseBar');
+  if(ph){
+    bar.innerHTML = `当前阶段：<b style="color:${ph.color}">${ph.name}</b>（${ph.start} ~ ${ph.end}）　` +
+      `<span>考试日 12-19/12-20（预计） · 点右上「今日任务」看今天完整清单</span>`;
+  } else {
+    bar.innerHTML = `<span>考试日 12-19/12-20（预计，以官方为准）</span>`;
+  }
+}
+
+// ============ 编辑器 ============
+let editingKey = null;
+function openEditor(key){
+  editingKey = key;
+  const d = fromKey(key);
+  const week = ['日','一','二','三','四','五','六'][d.getDay()];
+  document.getElementById('dialogTitle').innerHTML = `任务列表 <span class="sub">${key} 周${week}</span>`;
+  renderTaskList();
+  document.getElementById('mask').classList.add('show');
+}
+function closeEditor(){ document.querySelector('.add-row').style.display = 'flex'; document.getElementById('mask').classList.remove('show'); }
+
+function renderTaskList(){
+  const list = document.getElementById('taskList');
+  const tasks = data[editingKey] || [];
+  if(!tasks.length){ list.innerHTML = '<div class="empty-tip">今天还没有任务，用下面表单添加。</div>'; return; }
+
+  let html = '';
+  for(const subj of SUBJECT_ORDER){
+    const subTasks = tasks.map((t,idx)=>({t,idx})).filter(x=>x.t.subject===subj);
+    if(!subTasks.length) continue;
+    const totalH = subTasks.reduce((s,x)=>s+parseFloat(x.t.time)||0, 0);
+    const doneH = subTasks.filter(x=>x.t.done).reduce((s,x)=>s+parseFloat(x.t.time)||0, 0);
+    const s = SUBJECTS[subj];
+    html += `<div class="group"><div class="group-head"><span class="g-dot" style="background:${s.color}"></span>${s.label}` +
+      `<span class="g-time">${subTasks.filter(x=>x.t.done).length}/${subTasks.length} 完成 · ${doneH}h/${totalH}h</span></div>`;
+    subTasks.forEach(({t,idx})=>{
+      const core = isCore(t) ? ' <span class="core-mark" title="核心任务，优先完成">⭐</span>' : '';
+      html += `<div class="task-row ${t.done?'done':''}">
+        <input type="checkbox" ${t.done?'checked':''} data-idx="${idx}">
+        <span class="t-text">${escapeHtml(t.text)}${core}</span>
+        <span class="t-time">${escapeHtml(t.time||'')}</span>
+        <button class="t-move" data-idx="${idx}" title="未完成，顺延到后面">↪ 顺延</button>
+        <button class="t-del" data-idx="${idx}" title="删除">×</button></div>`;
+    });
+    html += `</div>`;
+  }
+  list.innerHTML = html;
+
+  list.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{ data[editingKey][cb.dataset.idx].done=cb.checked; save(data); render(); renderTaskList(); });
+  });
+  list.querySelectorAll('.t-del').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ data[editingKey].splice(btn.dataset.idx,1); save(data); render(); renderTaskList(); });
+  });
+  list.querySelectorAll('.t-move').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ moveTaskToNext(btn.dataset.idx); });
+  });
+}
+
+// 顺延：把当天某个未完成任务，移到后面最近一个"可放"的日期
+function moveTaskToNext(idx){
+  const tasks = data[editingKey];
+  if(!tasks) return;
+  const task = tasks[idx];
+  if(!task) return;
+  const curKey = editingKey;
+  // 从当天移除
+  tasks.splice(idx,1);
+  // 找后面最近的日期（跳过考试日），且优先非周末、已有任务的日子
+  let target = addDays(fromKey(curKey), 1);
+  let targetKey = toKey(target);
+  let guard = 0;
+  // 往后找，直到找到 12-20 之前且非考试日的日期
+  while(targetKey <= '2026-12-20' && guard < 400){
+    const d = target.getDay();
+    const isWeekend = (d===0||d===6);
+    const isExam = EXAM_DATES.includes(targetKey);
+    // 优先选工作日；若一直周末则也接受
+    if(!isExam){
+      if(!isWeekend) break;               // 工作日优先
+      if(!hasAnyTaskAfter(targetKey,1)) break; // 周末兜底
+    }
+    target = addDays(target,1); targetKey = toKey(target); guard++;
+  }
+  if(!data[targetKey]) data[targetKey] = [];
+  data[targetKey].push(task);
+  save(data); render(); renderTaskList();
+}
+
+// 判断某日期之后是否还有任务（避免顺延到太远）
+function hasAnyTaskAfter(key, lookahead){
+  let d = fromKey(key);
+  for(let i=0;i<lookahead;i++){ d = addDays(d,1); const k = toKey(d); if(data[k] && data[k].length) return true; }
+  return false;
+}
+
+function addTask(){
+  const subject = document.getElementById('addSubject').value;
+  const text = document.getElementById('addText').value.trim();
+  const time = document.getElementById('addTime').value.trim();
+  if(!text){ alert('请输入任务内容'); return; }
+  if(!data[editingKey]) data[editingKey]=[];
+  data[editingKey].push({subject, text, time, done:false});
+  save(data); render(); renderTaskList();
+  document.getElementById('addText').value='';
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// 判断是否「核心任务」（做不完也要优先完成，尽量不顺延）
+function isCore(t){
+  if(t.subject === 'math'){
+    // 数学：除周末的题型/知识点总结、模拟卷外，都是核心
+    if(/总结|模拟卷/.test(t.text)) return false;
+    return true;
+  }
+  if(t.subject === 'english'){
+    // 英语：单词、精读是核心；长难句、作文是次要
+    return /单词|精读/.test(t.text);
+  }
+  // 政治、专业课：任务本来就少，全部核心
+  return true;
+}
+
+// ============ 上岸概率计算器 ============
+// 各科水平选项 → 对应「满分150/100 的估算分数」
+const LEVELS = {
+  math: [
+    {v:'0', label:'零基础（还没开始）', score:30},
+    {v:'1', label:'会算不会想（基础不牢）', score:85},
+    {v:'2', label:'基础一般，能做题', score:105},
+    {v:'3', label:'基础扎实，思路清晰', score:125},
+    {v:'4', label:'很强，模拟能上130', score:140},
+  ],
+  english: [
+    {v:'0', label:'没过四级', score:50},
+    {v:'1', label:'四级水平', score:65},
+    {v:'2', label:'六级水平', score:80},
+    {v:'3', label:'六级高分/专四', score:88},
+  ],
+  politics: [
+    {v:'0', label:'没开始', score:60},
+    {v:'1', label:'过了一遍', score:68},
+    {v:'2', label:'刷过题+背过', score:75},
+  ],
+  major: [
+    {v:'0', label:'还没学', score:40},
+    {v:'1', label:'学过但不熟', score:85},
+    {v:'2', label:'基础一般', score:105},
+    {v:'3', label:'扎实', score:125},
+  ],
+};
+// 竞争度 → 相对分数线的高度要求（超过复试线多少分才稳）
+const COMPETITION = [
+  {v:'0', label:'冷门/过线就上', over:0},
+  {v:'1', label:'普通（报录比约5:1）', over:25},
+  {v:'2', label:'较卷（报录比8:1以上）', over:45},
+  {v:'3', label:'很卷（名校热门/10:1+）', over:65},
+];
+
+function computeProbability(){
+  // 1) 读基础水平选项
+  const get = id => document.getElementById(id).value;
+  const mLevel = LEVELS.math.find(x=>x.v===get('f_math')) || LEVELS.math[0];
+  const eLevel = LEVELS.english.find(x=>x.v===get('f_english')) || LEVELS.english[0];
+  const pLevel = LEVELS.politics.find(x=>x.v===get('f_politics')) || LEVELS.politics[0];
+  const jLevel = LEVELS.major.find(x=>x.v===get('f_major')) || LEVELS.major[0];
+  const comp = COMPETITION.find(x=>x.v===get('f_comp')) || COMPETITION[1];
+
+  // 2) 估算总分（数学150 + 英语100 + 政治100 + 专业课150 = 500）
+  const estTotal = mLevel.score + eLevel.score + pLevel.score + jLevel.score;
+
+  // 3) 任务完成度（读网站数据，从过去到今天）
+  const today = toKey(new Date());
+  let total=0, done=0, coreTotal=0, coreDone=0, mathTotal=0, mathDone=0;
+  for(const k of Object.keys(data)){
+    if(k > today) continue;
+    for(const t of (data[k]||[])){
+      total++; if(t.done) done++;
+      if(isCore(t)){ coreTotal++; if(t.done) coreDone++; }
+      if(t.subject==='math'){ mathTotal++; if(t.done) mathDone++; }
+    }
+  }
+  const coreRate = coreTotal? coreDone/coreTotal : 0;
+  const mathRate = mathTotal? mathDone/mathTotal : 0;
+  const totalRate = total? done/total : 0;
+
+  // 4) 剩余时间修正
+  const examDay = '2026-12-19';
+  const daysLeft = Math.max(0, Math.round((fromKey(examDay) - new Date())/86400000));
+  const timeFactor = Math.min(1, daysLeft/120); // 越近越紧
+
+  // 5) 核心：估算分 vs 目标分（复试线 + 竞争溢出）
+  const baseLine = 335;                       // 工科专硕复试线基准
+  const targetScore = baseLine + comp.over;   // 需要达到的总分
+  const gap = estTotal - targetScore;         // 正=超目标，负=不足
+
+  // 6) 概率计算：
+  //    基础概率由「估算分 vs 目标分」决定，用 sigmoid 映射到 0~1
+  let p = 1 / (1 + Math.exp(-(estTotal - targetScore)/18));
+
+  // 完成度修正：只奖不罚——完成度超过50%才加分（最多+20%），
+  // 没开始勾选/完成度低时不扣分（基础分已经反映了当前水平）
+  const completion = coreRate*0.65 + mathRate*0.35;
+  const adjust = completion > 0.5 ? (completion - 0.5) * 0.4 : 0;
+  p = Math.max(0, Math.min(1, p + adjust));
+
+  // 剩余时间：若基础水平很低(总分低)且时间少，再打折
+  p *= (0.7 + 0.3*timeFactor);
+
+  const prob = Math.round(p*100);
+
+  return { estTotal, targetScore, gap, prob, coreRate, mathRate, totalRate,
+           daysLeft, timeFactor, mLevel, eLevel, pLevel, jLevel, comp };
+}
+
+function showScore(){
+  // 如果还没填过表单，先渲染表单
+  const list = document.getElementById('taskList');
+  document.querySelector('.add-row').style.display = 'none';
+  document.getElementById('dialogTitle').textContent = '🎯 上岸概率计算器';
+
+  // 表单（每次都渲染，保留上次选择）
+  const sel = (id, opts, cur) => {
+    let o = '';
+    for(const x of opts){
+      const s = cur===x.v ? 'selected' : '';
+      o += `<option value="${x.v}" ${s}>${x.label}</option>`;
+    }
+    return `<select id="${id}">${o}</select>`;
+  };
+
+  list.innerHTML = `
+    <div class="calc-form">
+      <div class="calc-field"><label>数学（数二）</label>${sel('f_math', LEVELS.math, (window._calcSel||{}).math)}</div>
+      <div class="calc-field"><label>英语</label>${sel('f_english', LEVELS.english, (window._calcSel||{}).english)}</div>
+      <div class="calc-field"><label>政治</label>${sel('f_politics', LEVELS.politics, (window._calcSel||{}).politics)}</div>
+      <div class="calc-field"><label>专业课</label>${sel('f_major', LEVELS.major, (window._calcSel||{}).major)}</div>
+      <div class="calc-field"><label>目标竞争度</label>${sel('f_comp', COMPETITION, (window._calcSel||{}).comp)}</div>
+      <button class="calc-recalc" id="calcBtn">🔢 计算上岸概率</button>
+    </div>
+    <div id="calcResult"></div>
+    <div class="calc-disclaimer">概率基于经验模型估算，仅供自我评估参考，不构成真实录取预测。</div>`;
+
+  document.getElementById('calcBtn').addEventListener('click', ()=>{
+    window._calcSel = {
+      math: document.getElementById('f_math').value,
+      english: document.getElementById('f_english').value,
+      politics: document.getElementById('f_politics').value,
+      major: document.getElementById('f_major').value,
+      comp: document.getElementById('f_comp').value,
+    };
+    renderCalcResult();
+  });
+
+  // 个人版：预填真实情况，打开即算
+  const form = document.getElementById('f_math');
+  if(!window._calcSel){
+    document.getElementById('f_math').value = '1';      // 会算不会想
+    document.getElementById('f_english').value = '2';   // 六级
+    document.getElementById('f_politics').value = '0';  // 没开始
+    document.getElementById('f_major').value = '0';     // 还没学
+    document.getElementById('f_comp').value = '1';      // 普通5:1
+    window._calcSel = {
+      math:'1', english:'2', politics:'0', major:'0', comp:'1',
+    };
+  }
+  renderCalcResult();
+
+  document.getElementById('mask').classList.add('show');
+  editingKey = '__score__';
+}
+
+function renderCalcResult(){
+  const r = computeProbability();
+  const color = r.prob>=70 ? '#4caf6e' : r.prob>=40 ? '#e8a13a' : '#e05d5d';
+  let verdict = '';
+  if(r.prob>=70) verdict = '概率较高，稳住节奏，重点别偏。';
+  else if(r.prob>=45) verdict = '有机会，但需要冲刺——优先补短板科目。';
+  else if(r.prob>=25) verdict = '偏低，当前基础和/或完成度不足，建议加大投入或调整目标。';
+  else verdict = '难度较大。要么大幅提效，要么重新评估目标院校/时间。';
+
+  document.getElementById('calcResult').innerHTML = `
+    <div class="score-big" style="color:${color}">${r.prob}%</div>
+    <div class="score-label">预计上岸概率（估算）</div>
+    <div class="score-bar"><div class="fill" style="width:${r.prob}%"></div></div>
+    <div class="score-meta">
+      <div class="m"><span>估算总分</span><b>${r.estTotal} / 500</b></div>
+      <div class="m"><span>目标总分</span><b>${r.targetScore}</b></div>
+      <div class="m"><span>分差</span><b>${r.gap>=0?'+':''}${r.gap}</b></div>
+      <div class="m"><span>距离考试</span><b>${r.daysLeft} 天</b></div>
+      <div class="m"><span>核心任务完成率</span><b>${Math.round(r.coreRate*100)}%</b></div>
+      <div class="m"><span>数学任务完成率</span><b>${Math.round(r.mathRate*100)}%</b></div>
+      <div class="m"><span>整体完成率</span><b>${Math.round(r.totalRate*100)}%</b></div>
+    </div>
+    <div class="score-note">${verdict}</div>`;
+}
+
+// ============ 事件 ============
+document.getElementById('prevMonth').addEventListener('click', ()=>{ viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} render(); });
+document.getElementById('nextMonth').addEventListener('click', ()=>{ viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} render(); });
+document.getElementById('closeBtn').addEventListener('click', closeEditor);
+document.getElementById('mask').addEventListener('click', e=>{ if(e.target===document.getElementById('mask')) closeEditor(); });
+document.getElementById('addBtn').addEventListener('click', addTask);
+document.getElementById('addText').addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(); });
+document.getElementById('todayBtn').addEventListener('click', ()=>{ openEditor(toKey(new Date())); });
+document.getElementById('scoreBtn').addEventListener('click', showScore);
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(confirm('确定恢复默认计划？你的所有修改都会被覆盖。')){ data = generateDefaultPlan(); save(data); render(); }
+});
+
+// ============ 启动 ============
+viewYear = new Date().getFullYear(); viewMonth = new Date().getMonth();
+render();
+</script>
+</body>
+</html>
