@@ -131,6 +131,11 @@
   .task-row .t-del:hover { color: #e05d5d; }
   .task-row .t-move { border: 1px solid #d9dbe0; background: #fff; color: var(--muted); cursor: pointer; font-size: 12px; border-radius: 5px; padding: 1px 6px; flex-shrink: 0; }
   .task-row .t-move:hover { background: #eef4ff; color: #3b82f6; border-color: #3b82f6; }
+  .btn-moveall {
+    border: 1px solid #d9dbe0; background: #fff; color: var(--muted); cursor: pointer;
+    font-size: 12px; border-radius: 6px; padding: 3px 10px; margin-right: 8px;
+  }
+  .btn-moveall:hover { background: #eef4ff; color: #3b82f6; border-color: #3b82f6; }
   .core-mark { font-size: 12px; }
 
   /* 信心指数结果 */
@@ -225,6 +230,7 @@
   <div class="dialog">
     <div class="dialog-head">
       <h2 id="dialogTitle">任务列表</h2>
+      <button class="btn-moveall" id="moveAllBtn" title="把今天所有未完成的任务顺延到明天">↪ 全部顺延</button>
       <button class="close" id="closeBtn">×</button>
     </div>
     <div class="dialog-body">
@@ -575,6 +581,30 @@ function hasAnyTaskAfter(key, lookahead){
   return false;
 }
 
+// 一键顺延：把当天所有「未完成」任务推到后面最近的工作日
+function moveAllUndone(){
+  const tasks = data[editingKey];
+  if(!tasks || !tasks.length){ alert('今天没有任务'); return; }
+  const undone = tasks.filter(t=>!t.done);
+  if(!undone.length){ alert('今天的任务都完成了，无需顺延'); return; }
+  if(!confirm(`把今天 ${undone.length} 个未完成任务顺延到后面？`)) return;
+  // 找出目标日期（下一个工作日）
+  let target = addDays(fromKey(editingKey), 1);
+  let targetKey = toKey(target);
+  let guard = 0;
+  while(targetKey <= '2026-12-20' && guard < 400){
+    const d = target.getDay();
+    if(d!==0 && d!==6 && !EXAM_DATES.includes(targetKey)) break;
+    target = addDays(target,1); targetKey = toKey(target); guard++;
+  }
+  // 把未完成的任务移过去，保留已完成的任务在原地
+  data[editingKey] = tasks.filter(t=>t.done);
+  if(!data[targetKey]) data[targetKey] = [];
+  undone.forEach(t => data[targetKey].push(t));
+  save(data); render(); renderTaskList();
+  alert(`已顺延 ${undone.length} 个任务到 ${targetKey}`);
+}
+
 function addTask(){
   const subject = document.getElementById('addSubject').value;
   const text = document.getElementById('addText').value.trim();
@@ -781,6 +811,7 @@ document.getElementById('prevMonth').addEventListener('click', ()=>{ viewMonth--
 document.getElementById('nextMonth').addEventListener('click', ()=>{ viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} render(); });
 document.getElementById('closeBtn').addEventListener('click', closeEditor);
 document.getElementById('mask').addEventListener('click', e=>{ if(e.target===document.getElementById('mask')) closeEditor(); });
+document.getElementById('moveAllBtn').addEventListener('click', moveAllUndone);
 document.getElementById('addBtn').addEventListener('click', addTask);
 document.getElementById('addText').addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(); });
 document.getElementById('todayBtn').addEventListener('click', ()=>{ openEditor(toKey(new Date())); });
