@@ -230,6 +230,7 @@
   <div class="dialog">
     <div class="dialog-head">
       <h2 id="dialogTitle">任务列表</h2>
+      <button class="btn-moveall" id="doneAllBtn" title="把今天所有任务标记为完成">✓ 全部完成</button>
       <button class="btn-moveall" id="moveAllBtn" title="把今天所有未完成的任务顺延到明天">↪ 全部顺延</button>
       <button class="close" id="closeBtn">×</button>
     </div>
@@ -605,6 +606,37 @@ function moveAllUndone(){
   alert(`已顺延 ${undone.length} 个任务到 ${targetKey}`);
 }
 
+// 一键完成：把当天所有任务标记为已完成
+function completeAll(){
+  const tasks = data[editingKey];
+  if(!tasks || !tasks.length){ alert('今天没有任务'); return; }
+  tasks.forEach(t => { t.done = true; });
+  save(data); render(); renderTaskList();
+}
+
+// 重新生成计划，但保留「已完成」的勾选记录（按任务文字匹配）
+function mergeDefaultPlanKeepingDone(){
+  // 先收集旧数据里每个已完成任务的文字
+  const doneSet = {};   // key -> { "任务文字": true }
+  for(const k of Object.keys(data)){
+    const arr = data[k] || [];
+    const d = {};
+    arr.forEach(t => { if(t.done) d[t.text] = true; });
+    if(Object.keys(d).length) doneSet[k] = d;
+  }
+  // 生成新计划
+  const fresh = generateDefaultPlan();
+  // 把旧的完成状态合并到新计划里
+  for(const k of Object.keys(fresh)){
+    if(doneSet[k]){
+      fresh[k].forEach(t => { if(doneSet[k][t.text]) t.done = true; });
+    }
+  }
+  data = fresh; save(data); render();
+  const keptCount = Object.keys(doneSet).reduce((s,k)=>s+Object.keys(doneSet[k]).length,0);
+  alert(`已重新生成，保留了 ${keptCount} 条完成记录。`);
+}
+
 function addTask(){
   const subject = document.getElementById('addSubject').value;
   const text = document.getElementById('addText').value.trim();
@@ -812,12 +844,15 @@ document.getElementById('nextMonth').addEventListener('click', ()=>{ viewMonth++
 document.getElementById('closeBtn').addEventListener('click', closeEditor);
 document.getElementById('mask').addEventListener('click', e=>{ if(e.target===document.getElementById('mask')) closeEditor(); });
 document.getElementById('moveAllBtn').addEventListener('click', moveAllUndone);
+document.getElementById('doneAllBtn').addEventListener('click', completeAll);
 document.getElementById('addBtn').addEventListener('click', addTask);
 document.getElementById('addText').addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(); });
 document.getElementById('todayBtn').addEventListener('click', ()=>{ openEditor(toKey(new Date())); });
 document.getElementById('scoreBtn').addEventListener('click', showScore);
 document.getElementById('resetBtn').addEventListener('click', ()=>{
-  if(confirm('确定恢复默认计划？你的所有修改都会被覆盖。')){ data = generateDefaultPlan(); save(data); render(); }
+  if(confirm('重新生成计划？会保留你已经勾选完成的任务记录。')){
+    mergeDefaultPlanKeepingDone();
+  }
 });
 document.getElementById('exportBtn').addEventListener('click', exportData);
 document.getElementById('importBtn').addEventListener('click', importData);
