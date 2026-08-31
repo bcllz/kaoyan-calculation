@@ -91,6 +91,17 @@
   .task-chip.done { opacity: .45; text-decoration: line-through; }
   .more { font-size: 11px; color: var(--muted); }
 
+  /* 科目分类圆点 */
+  .dots { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
+  .dot-c {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot-c.math { background: var(--math); }
+  .dot-c.english { background: var(--english); }
+  .dot-c.politics { background: var(--politics); }
+  .dot-c.major { background: var(--major); }
+  .dot-c.done { opacity: .35; }
+
   /* 模态框 */
   .mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 50; }
   .mask.show { display: flex; }
@@ -452,10 +463,17 @@ function buildDayHtml(key){
   const doneCount = tasks.filter(t=>t.done).length;
   const head = `<div class="day-head"><span class="day-num">${key.split('-')[2]}</span>` +
     (tasks.length?`<span class="day-count">${doneCount}/${tasks.length}</span>`:'') + `</div>`;
-  const chips = tasks.slice(0,4).map(t=>`<div class="task-chip ${t.subject}${t.done?' done':''}" title="${t.text}">${t.text}</div>`).join('');
+  // 按科目去重，生成彩色圆点（该科目任务全部完成则变淡）
+  const subjects = SUBJECT_ORDER.filter(s => tasks.some(t=>t.subject===s));
+  const dots = subjects.map(s=>{
+    const subTasks = tasks.filter(t=>t.subject===s);
+    const allDone = subTasks.length && subTasks.every(t=>t.done);
+    return `<span class="dot-c ${s}${allDone?' done':''}" title="${SUBJECTS[s].label}"></span>`;
+  }).join('');
+  const dotsHtml = dots ? `<div class="dots">${dots}</div>` : '';
   const more = tasks.length>4?`<div class="more">+${tasks.length-4} 更多…</div>`:'';
   const examTag = EXAM_DATES.includes(key)?`<div class="task-chip math">📝 考试</div>`:'';
-  return head + chips + more + examTag;
+  return head + dotsHtml + more + examTag;
 }
 
 function renderPhaseBar(){
