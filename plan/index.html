@@ -302,10 +302,10 @@ const PROOF_TOPICS = [
   '线代·矩阵秩 r(AB)≤min','线代·向量组线性无关','线代·基础解系','线代·相似与合同','线代·正定矩阵',
   '概率·分布函数性质','概率·独立与不相关','概率·切比雪夫不等式','概率·统计量分布','概率·无偏估计'
 ];
-// 自控原理章节序列
+// 810 控制工程基础章节（董景新《控制工程基础》）：一般概念/数学模型/时域/根轨迹/频域/校正
 const ZIKONG_CHAPTERS = [
-  '控制系统数学模型','时域分析法','根轨迹法','频域分析法',
-  '系统校正','离散系统','非线性系统','状态空间(现控)'
+  '自动控制的一般概念','控制系统数学模型','时域分析法',
+  '根轨迹法','频域分析法','系统校正'
 ];
 
 function pad(n){ return String(n).padStart(2,'0'); }
@@ -330,7 +330,7 @@ function generateDefaultPlan(){
     const isSprint = ph.name.indexOf('④')===0;
     const tasks = [];
 
-    // ===== 数学二 =====
+    // ===== 数学一 =====
     const topic = MATH_TOPICS[topicIdx % MATH_TOPICS.length];
     const proof = PROOF_TOPICS[proofIdx % PROOF_TOPICS.length];
     if(!weekend) topicIdx++;
@@ -360,15 +360,15 @@ function generateDefaultPlan(){
       if(weekend) tasks.push({subject:'math', text:'模拟卷 1套（掐时间）', time:'3h', done:false});
     }
 
-    // ===== 英语二 =====
+    // ===== 英语一 =====
     tasks.push({subject:'english', text:'单词 150个', time:'0.5h', done:false});
     tasks.push({subject:'english', text:'长难句 每日1句', time:'0.2h', done:false});
     if(isBase || isStrong){
-      tasks.push({subject:'english', text:'精读1篇（教辅→尽快转英语二真题）', time:'1h', done:false});
-      if(dow===1||dow===3||dow===5) tasks.push({subject:'english', text:'小作文/图表作文素材积累', time:'0.5h', done:false});
+      tasks.push({subject:'english', text:'精读1篇（教辅→尽快转英语一真题）', time:'1h', done:false});
+      if(dow===1||dow===3||dow===5) tasks.push({subject:'english', text:'小作文/图画作文素材积累', time:'0.5h', done:false});
     } else {
-      tasks.push({subject:'english', text:'英语二真题精读1篇', time:'1h', done:false});
-      tasks.push({subject:'english', text: isZhenti?'作文·图表作文模板整理':'作文·真题写作+背诵', time:'0.5h', done:false});
+      tasks.push({subject:'english', text:'英语一真题精读1篇', time:'1h', done:false});
+      tasks.push({subject:'english', text: isZhenti?'作文·图画作文模板整理':'作文·真题写作+背诵', time:'0.5h', done:false});
     }
 
     // ===== 政治 =====
@@ -379,14 +379,14 @@ function generateDefaultPlan(){
       tasks.push({subject:'politics', text:'政治选择题 1000题', time:'1h', done:false});
     }
 
-    // ===== 专业课（自控原理，每天） =====
+    // ===== 专业课（810 控制工程基础，每天） =====
     {
       const chap = ZIKONG_CHAPTERS[zikIdx % ZIKONG_CHAPTERS.length];
       zikIdx++;
-      if(isBase)      tasks.push({subject:'major', text:`821自控·${chap} 教材+课后题`, time:'3h', done:false});
-      else if(isStrong) tasks.push({subject:'major', text:`821自控·${chap} 题型训练`, time:'3h', done:false});
-      else if(isZhenti) tasks.push({subject:'major', text:'821自控·历年真题', time:'3h', done:false});
-      else            tasks.push({subject:'major', text:'821自控·背诵+错题（不能用计算器，练手算）', time:'2h', done:false});
+      if(isBase)      tasks.push({subject:'major', text:`810控制·${chap} 教材+课后题`, time:'3h', done:false});
+      else if(isStrong) tasks.push({subject:'major', text:`810控制·${chap} 题型训练`, time:'3h', done:false});
+      else if(isZhenti) tasks.push({subject:'major', text:'810控制·历年真题', time:'3h', done:false});
+      else            tasks.push({subject:'major', text:'810控制·背诵+错题（不能用计算器，练手算）', time:'2h', done:false});
     }
 
     plan[key] = tasks;
@@ -707,7 +707,7 @@ function computeProbability(){
   const eLevel = LEVELS.english.find(x=>x.v===get('f_english')) || LEVELS.english[0];
   const pLevel = LEVELS.politics.find(x=>x.v===get('f_politics')) || LEVELS.politics[0];
   const jLevel = LEVELS.major.find(x=>x.v===get('f_major')) || LEVELS.major[0];
-  const comp = COMPETITION.find(x=>x.v===get('f_comp')) || COMPETITION[1];
+  const comp = COMPETITION.find(x=>x.v===get('f_comp')) || COMPETITION[0];
 
   // 2) 估算总分（数学150 + 英语100 + 政治100 + 专业课150 = 500）
   const estTotal = mLevel.score + eLevel.score + pLevel.score + jLevel.score;
@@ -733,7 +733,7 @@ function computeProbability(){
   const timeFactor = Math.min(1, daysLeft/120); // 越近越紧
 
   // 5) 核心：估算分 vs 目标分（复试线 + 竞争溢出）
-  const baseLine = 335;                       // 工科专硕复试线基准
+  const baseLine = 340;                       // 北邮控制学硕 2025 录取平均分基准
   const targetScore = baseLine + comp.over;   // 需要达到的总分
   const gap = estTotal - targetScore;         // 正=超目标，负=不足
 
@@ -774,7 +774,7 @@ function showScore(){
 
   list.innerHTML = `
     <div class="calc-form">
-      <div class="calc-field"><label>数学（数二）</label>${sel('f_math', LEVELS.math, (window._calcSel||{}).math)}</div>
+      <div class="calc-field"><label>数学（数一）</label>${sel('f_math', LEVELS.math, (window._calcSel||{}).math)}</div>
       <div class="calc-field"><label>英语</label>${sel('f_english', LEVELS.english, (window._calcSel||{}).english)}</div>
       <div class="calc-field"><label>政治</label>${sel('f_politics', LEVELS.politics, (window._calcSel||{}).politics)}</div>
       <div class="calc-field"><label>专业课</label>${sel('f_major', LEVELS.major, (window._calcSel||{}).major)}</div>
@@ -802,9 +802,9 @@ function showScore(){
     document.getElementById('f_english').value = '2';   // 六级
     document.getElementById('f_politics').value = '0';  // 没开始
     document.getElementById('f_major').value = '0';     // 还没学
-    document.getElementById('f_comp').value = '1';      // 普通5:1
+    document.getElementById('f_comp').value = '0';      // 冷门/过线就上
     window._calcSel = {
-      math:'1', english:'2', politics:'0', major:'0', comp:'1',
+      math:'1', english:'2', politics:'0', major:'0', comp:'0',
     };
   }
   renderCalcResult();
